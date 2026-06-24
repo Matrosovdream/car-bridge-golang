@@ -1,0 +1,21 @@
+# Binaries
+/bin/
+*.exe
+car-bridge
+
+# Env & secrets
+.env
+*.local
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# other, temp
+/temp/
