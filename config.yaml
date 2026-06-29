@@ -1,0 +1,35 @@
+app:
+  name: car-bridge
+  port: 3000
+  proxy_header: ""
+  trusted_proxies: []
+
+log:
+  level: 4
+
+database:
+  url: postgres://carbridge:carbridge@localhost:5432/carbridge?sslmode=disable
+
+redis:
+  url: redis://localhost:6379/0
+
+ratelimit:
+  max: 100
+  window_seconds: 60
+
+integrations:
+  # ---- vehicle ----
+  transgov:
+    base_url: https://vpic.nhtsa.dot.gov/api/vehicles
+    timeout_seconds: 10
+    retries: 2
+  saferweb:
+    base_url: https://mobile.fmcsa.dot.gov/qc/services
+    api_key: "" 
+    timeout_seconds: 10
+    retries: 3  
+  plaid:
+    base_url: https://sandbox.plaid.com
+    api_key: ""
+    timeout_seconds: 15
+    retries: 2
