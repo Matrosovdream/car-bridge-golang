@@ -6,12 +6,14 @@ import "context"
 
 // Message is an outbound SMS.
 type Message struct {
+	From string
 	To   string
 	Body string
 }
 
 // Email is an outbound email.
 type Email struct {
+	From    string
 	To      string
 	Subject string
 	HTML    string
