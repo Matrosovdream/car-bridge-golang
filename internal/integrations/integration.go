@@ -62,7 +62,7 @@ func (c *Client) DoJSON(
 	headers map[string]string,
 ) error {
 
-	retries := c.cfg.retries
+	retries := c.cfg.Retries
 	if retries < 0 {
 		retries = 0
 	}
@@ -152,9 +152,7 @@ func (c *Client) do(
 	defer resp.Body.Close()
 
 	data, _ := io.ReadAll(
-		it.LimitReader(
-			resp.Body, maxBodyBytes,
-		)
+		io.LimitReader(resp.Body, maxBodyBytes),
 	)
 
 	switch {
@@ -180,7 +178,7 @@ func (c *Client) do(
 
 func isRetryable(err error) bool {
 	return errors.Is(err, ErrUpstreamUnavailable) ||
-		errors.Is(err, ErrRateLimiter)
+		errors.Is(err, ErrRateLimited)
 }
 
 func truncate(b []byte) string {
