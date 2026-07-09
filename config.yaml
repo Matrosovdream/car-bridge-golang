@@ -1,35 +1,75 @@
+# Non-secret configuration. Secrets (API keys, DB url) come from the
+# environment and override these values — see .env.example.
 app:
   name: car-bridge
-  port: 3000
-  proxy_header: ""
-  trusted_proxies: []
+  port: 3000            # REST/HTTP (Fiber)
+
+grpc:
+  port: 50051           # gRPC server (separate listener from the HTTP port)
+  # Set these only when behind a trusted reverse proxy / load balancer so the
+  # real client IP is used for rate limiting (otherwise leave blank/empty).
+  proxy_header: ""        # e.g. X-Forwarded-For
+  trusted_proxies: []     # e.g. ["10.0.0.0/8", "172.16.0.0/12"]
 
 log:
+  # logrus level: 6=trace 5=debug 4=info 3=warn 2=error
   level: 4
 
 database:
+  # overridden by DATABASE_URL
   url: postgres://carbridge:carbridge@localhost:5432/carbridge?sslmode=disable
 
 redis:
+  # overridden by REDIS_URL; leave empty to use in-memory rate-limit storage
   url: redis://localhost:6379/0
 
 ratelimit:
+  # inbound API limit, per client IP (see app.proxy_header when behind a proxy)
   max: 100
   window_seconds: 60
 
 integrations:
-  # ---- vehicle ----
+  # --- vehicle ---
   transgov:
     base_url: https://vpic.nhtsa.dot.gov/api/vehicles
     timeout_seconds: 10
     retries: 2
   saferweb:
     base_url: https://mobile.fmcsa.dot.gov/qc/services
-    api_key: "" 
+    api_key: ""            # set via SAFERWEB_WEBKEY (FMCSA QCMobile webKey)
     timeout_seconds: 10
-    retries: 3  
+    retries: 3             # QCMobile is flaky — retry with backoff
+  carsxe:
+    base_url: https://api.carsxe.com
+    api_key: ""            # set via CARSXE_API_KEY
+    timeout_seconds: 10
+    retries: 2
+  vehicledatabases:
+    base_url: https://api.vehicledatabases.com
+    api_key: ""            # set via VEHICLEDATABASES_API_KEY
+    timeout_seconds: 10
+    retries: 2
+  # --- finance ---
   plaid:
     base_url: https://sandbox.plaid.com
-    api_key: ""
+    api_key: ""            # set via PLAID_SECRET
     timeout_seconds: 15
+    retries: 2
+  # --- comms ---
+  postmark:
+    base_url: https://api.postmarkapp.com
+    api_key: ""            # set via POSTMARK_SERVER_TOKEN (Postmark Server API token)
+    timeout_seconds: 10
+    retries: 2
+  sendgrid:
+    base_url: https://api.sendgrid.com
+    api_key: ""            # set via SENDGRID_API_KEY
+    timeout_seconds: 10
+    retries: 2
+  twilio:
+    # base_url embeds your Account SID; the client reads the SID from it for
+    # HTTP Basic auth (username = SID, password = auth token).
+    base_url: https://api.twilio.com/2010-04-01/Accounts/ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    api_key: ""            # set via TWILIO_AUTH_TOKEN
+    timeout_seconds: 10
     retries: 2

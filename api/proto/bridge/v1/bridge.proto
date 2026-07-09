@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+// Package bridge.v1 is the gRPC counterpart of the REST delivery layer. Each RPC
+// mirrors an existing HTTP endpoint and is served by a handler that reuses the
+// same service layer (see internal/delivery/grpc/handler).
+package bridge.v1;
+
+option go_package = "car-bridge/internal/delivery/grpc/gen/bridge/v1;bridgev1";
+
+// CarrierService mirrors REST GET /api/carriers/:dot.
+service CarrierService {
+  // GetByDOT looks up a motor carrier by its USDOT number.
+  //
+  // Error codes:
+  //   INVALID_ARGUMENT   dot_number missing or non-numeric
+  //   NOT_FOUND          no carrier for that USDOT number
+  //   UNIMPLEMENTED      upstream provider not wired yet
+  //   UNAVAILABLE        upstream data source unreachable
+  //   RESOURCE_EXHAUSTED upstream rate limited
+  rpc GetByDOT(GetByDOTRequest) returns (GetByDOTResponse);
+}
+
+message GetByDOTRequest {
+  string dot_number = 1;
+}
+
+message GetByDOTResponse {
+  Carrier carrier = 1;
+}
+
+message Carrier {
+  string dot_number = 1;
+  string legal_name = 2;
+  string dba_name = 3;
+}
+
+// HealthService mirrors REST GET /health.
+service HealthService {
+  rpc Check(CheckRequest) returns (CheckResponse);
+}
+
+message CheckRequest {}
+
+message CheckResponse {
+  // Overall status: "ok" or "degraded".
+  string status = 1;
+  // Dependency states: "ok" | "down".
+  string db = 2;
+  // "ok" | "down" | "disabled" (disabled when Redis is not configured).
+  string redis = 3;
+}

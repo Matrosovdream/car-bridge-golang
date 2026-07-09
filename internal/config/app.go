@@ -11,9 +11,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/go-playground/validator/v10"
 
+	bridgev1 "car-bridge/internal/delivery/grpc/gen/bridge/v1"
+	grpchandler "car-bridge/internal/delivery/grpc/handler"
 	"car-bridge/internal/delivery/http/controller"
 	mw "car-bridge/internal/delivery/http/middleware"
 	"car-bridge/internal/delivery/http/route"
@@ -28,6 +32,7 @@ import (
 // BootstrapConfig carries the dependencies wired by Bootstrap.
 type BootstrapConfig struct {
 	App      *fiber.App
+	GRPC     *grpc.Server // nil to skip gRPC registration (e.g. tests)
 	DB       *pgxpool.Pool
 	Redis    *redis.Client // nil when Redis is not configured
 	Log      *logrus.Logger
@@ -36,8 +41,8 @@ type BootstrapConfig struct {
 }
 
 // Bootstrap wires middleware, integrations, repositories, services, controllers
+// and routes. This is the single composition root — swap a provider here.
 func Bootstrap(b *BootstrapConfig) {
-
 	// --- middleware ---
 	b.App.Use(recover.New())
 	b.App.Use(requestid.New())
@@ -76,13 +81,21 @@ func Bootstrap(b *BootstrapConfig) {
 	healthController := controller.NewHealthController(b.DB, b.Redis, b.Log)
 	carrierController := controller.NewCarrierController(carrierService, b.Validate, b.Log)
 
-	// --- routes ---
+	// --- HTTP routes ---
 	routes := route.Config{
 		App:               b.App,
 		HealthController:  healthController,
 		CarrierController: carrierController,
 	}
 	routes.Setup()
+
+	// --- gRPC services (share the same services as the REST controllers) ---
+	if b.GRPC != nil {
+		bridgev1.RegisterCarrierServiceServer(b.GRPC, grpchandler.NewCarrierHandler(carrierService, b.Validate, b.Log))
+		bridgev1.RegisterHealthServiceServer(b.GRPC, grpchandler.NewHealthHandler(b.DB, b.Redis, b.Log))
+		// Server reflection lets grpcurl/grpcui discover services without the .proto.
+		reflection.Register(b.GRPC)
+	}
 }
 
 // newRateLimiter builds the inbound rate limiter. It is Redis-backed when Redis
